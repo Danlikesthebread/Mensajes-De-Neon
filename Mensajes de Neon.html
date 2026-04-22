@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mensajes de Neón</title>
+    <link href="https://fonts.googleapis.com/css2?family=Monoton&family=Pacifico&family=Righteous&family=Press+Start+2P&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-color: #ff00ea;
+            --font-size: 15vw;
+            --speed: 12s;
+            --font-family: 'Righteous', sans-serif;
+            --glow-spread: 1;
+            --direction: normal;
+            --letter-spacing: 0.05em;
+            --bg-color: #030303;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html {
+            width: 100%; height: 100%;
+            background-color: var(--bg-color);
+            overflow: hidden;
+            font-family: var(--font-family);
+            perspective: 1500px;
+            transition: background-color 0.4s;
+        }
+        body::before {
+            content: "";
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(ellipse at 50% 40%, #1a1a1a 0%, #000 70%);
+            z-index: -2;
+        }
+        .vignette {
+            position: fixed; inset: 0;
+            background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.65) 100%);
+            z-index: 1; pointer-events: none;
+        }
+        .cyber-grid {
+            position: absolute; bottom: -50%; left: -50%; width: 200%; height: 100%;
+            background-image:
+                linear-gradient(transparent 65%, var(--neon-color) 100%),
+                repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,.05) 40px, rgba(255,255,255,.1) 42px),
+                repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(255,255,255,.05) 40px, rgba(255,255,255,.1) 42px);
+            transform: rotateX(75deg);
+            z-index: -1; opacity: 0.4;
+            animation: moveGrid 4s linear infinite;
+            filter: drop-shadow(0 -10px 20px var(--neon-color));
+            transition: opacity 0.4s;
+        }
+        @keyframes moveGrid {
+            from { transform: rotateX(75deg) translateY(0); }
+            to   { transform: rotateX(75deg) translateY(42px); }
+        }
+        .scanlines {
+            position: fixed; inset: 0;
+            background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,.25) 50%);
+            background-size: 100% 4px;
+            z-index: 50; pointer-events: none;
+        }
+        #particle-canvas {
+            position: fixed; inset: 0;
+            pointer-events: none; z-index: 2;
+            opacity: 0; transition: opacity .6s;
+        }
+        #particle-canvas.on { opacity: 1; }
+        .corner {
+            position: fixed; width: 55px; height: 55px;
+            z-index: 5; pointer-events: none; opacity: .35;
+        }
+        .corner.tl { top: 14px; left: 14px; }
+        .corner.tr { top: 14px; right: 14px; transform: scaleX(-1); }
+        .corner.bl { bottom: 14px; left: 14px; transform: scaleY(-1); }
+        .corner.br { bottom: 14px; right: 14px; transform: scale(-1,-1); }
+        .scene {
+            position: relative; z-index: 3;
+            width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 0.5vw;
+            transform-style: preserve-3d;
+            transition: transform .2s ease-out;
+        }
+        #clock-display {
+            display: none;
+            font-family: 'Orbitron', sans-serif;
+            font-size: var(--font-size);
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: .08em;
+            text-shadow:
+                0 0 calc(5px  * var(--glow-spread)) #fff,
+                0 0 calc(12px * var(--glow-spread)) #fff,
+                0 0 calc(25px * var(--glow-spread)) var(--neon-color),
+                0 0 calc(50px * var(--glow-spread)) var(--neon-color),
+                0 0 calc(90px * var(--glow-spread)) var(--neon-color),
+                0 0 calc(130px* var(--glow-spread)) var(--neon-color);
+            -webkit-box-reflect: below -2vw linear-gradient(transparent 50%, rgba(255,255,255,.2));
+        }
+        .marquee-wrapper {
+            white-space: nowrap; width: 100%; position: relative;
+            -webkit-box-reflect: below -3vw linear-gradient(transparent 50%, rgba(255,255,255,.3));
+        }
+        .scroll-content {
+            display: inline-block; padding-left: 100%;
+            animation: scroll var(--speed) linear infinite var(--direction);
+            animation-play-state: paused;
+            will-change: transform;
+        }
+        @keyframes scroll {
+            from { transform: translateX(0); }
+            to   { transform: translateX(-100%); }
+        }
+        .neon-text {
+            display: inline-block;
+            font-size: var(--font-size);
+            font-family: var(--font-family);
+            color: #fff;
+            letter-spacing: var(--letter-spacing);
+            min-height: 1.2em;
+            text-shadow:
+                0 0 calc(5px  * var(--glow-spread)) #fff,
+                0 0 calc(10px * var(--glow-spread)) #fff,
+                0 0 calc(20px * var(--glow-spread)) var(--neon-color),
+                0 0 calc(40px * var(--glow-spread)) var(--neon-color),
+                0 0 calc(80px * var(--glow-spread)) var(--neon-color),
+                0 0 calc(120px* var(--glow-spread)) var(--neon-color);
+        }
+        .sep-span {
+            display: inline-block;
+            font-size: calc(var(--font-size) * .65);
+            color: var(--neon-color);
+            opacity: .55;
+            padding: 0 .4em;
+            letter-spacing: 0;
+            text-shadow: 0 0 12px var(--neon-color), 0 0 25px var(--neon-color);
+        }
+        .subtitle-wrap { width: 100%; text-align: center; pointer-events: none; min-height: 1em; }
+        #subtitle-display {
+            font-family: var(--font-family);
+            font-size: 2.8vw;
+            color: #fff;
+            letter-spacing: .35em;
+            text-transform: uppercase;
+            opacity: .65;
+            text-shadow: 0 0 6px #fff, 0 0 18px var(--neon-color), 0 0 40px var(--neon-color);
+        }
+        #toast {
+            position: fixed; top: 28px; left: 50%;
+            transform: translateX(-50%) translateY(-70px);
+            background: rgba(5,5,5,.9); border: 1px solid var(--neon-color);
+            color: var(--neon-color); font-family: 'Segoe UI', sans-serif;
+            font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase;
+            padding: 9px 20px; border-radius: 3px; z-index: 999;
+            box-shadow: 0 0 18px var(--neon-color);
+            transition: transform .4s cubic-bezier(.175,.885,.32,1.275);
+            pointer-events: none; white-space: nowrap;
+        }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+        #kb-hints {
+            position: fixed; bottom: 140px; right: 18px;
+            font-family: 'Segoe UI', sans-serif; font-size: 9px;
+            color: rgba(255,255,255,.14); letter-spacing: 1.8px;
+            z-index: 60; line-height: 2.1; text-align: right;
+            pointer-events: none; text-transform: uppercase;
+        }
+        .animation-actions {
+            position: fixed; top: 22px; right: 22px;
+            z-index: 1000; display: flex; gap: 9px; align-items: center;
+        }
+        .custom-btn {
+            width: 44px; height: 44px;
+            background: rgba(0,0,0,.65); border: 1px solid rgba(255,255,255,.12);
+            border-radius: 2px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all .25s;
+            backdrop-filter: blur(6px); user-select: none;
+            position: relative;
+        }
+        .custom-btn:hover {
+            background: rgba(255,255,255,.08);
+            border-color: var(--neon-color);
+            box-shadow: 0 0 14px var(--neon-color);
+        }
+        .custom-btn::after {
+            content: attr(data-tip);
+            position: absolute; bottom: -26px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,.9); color: rgba(255,255,255,.5);
+            font-family: 'Segoe UI', sans-serif; font-size: 8px;
+            letter-spacing: 1.5px; padding: 3px 7px; white-space: nowrap;
+            opacity: 0; pointer-events: none; transition: opacity .2s;
+        }
+        .custom-btn:hover::after { opacity: 1; }
+        .icon-play  { width:0; height:0; border-top:8px solid transparent; border-bottom:8px solid transparent; border-left:12px solid rgba(255,255,255,.8); margin-left:3px; }
+        .icon-pause { display:none; gap:4px; }
+        .icon-pause span { display:block; width:4px; height:15px; background:rgba(255,255,255,.8); }
+        .icon-stop  { width:13px; height:13px; background:rgba(255,255,255,.8); }
+        .icon-fs    { width:11px; height:11px; border:2px solid rgba(255,255,255,.75); }
+        .icon-snd   { font-size:15px; line-height:1; opacity:.75; }
+        .is-playing .icon-play  { display:none; }
+        .is-playing .icon-pause { display:flex; }
+        .hover-zone {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 110px;
+            z-index: 90;
+            display: flex; justify-content: center; align-items: flex-end; padding-bottom: 14px;
+            color: rgba(255,255,255,.28); font-size: 10px;
+            font-family: 'Segoe UI', sans-serif; letter-spacing: 2.5px;
+            animation: hz-pulse 3s ease-in-out infinite;
+        }
+        @keyframes hz-pulse { 0%,100%{opacity:.28} 50%{opacity:.5} }
+        .controls {
+            position: fixed; bottom: 18px; left: 50%;
+            transform: translateX(-50%) translateY(28px) scale(.96);
+            background: rgba(8,8,8,.8);
+            backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+            padding: 16px 18px 14px;
+            border-radius: 12px;
+            display: flex; flex-wrap: wrap; gap: 16px;
+            justify-content: center; align-items: flex-start;
+            opacity: 0; z-index: 100;
+            border: 1px solid rgba(255,255,255,.07);
+            box-shadow: 0 20px 60px rgba(0,0,0,.97);
+            transition: all .4s cubic-bezier(.175,.885,.32,1.275);
+            max-width: 96vw;
+        }
+        .hover-zone:hover + .controls,
+        .controls:hover { opacity:1; transform:translateX(-50%) translateY(0) scale(1); }
+        .ctrl-col { display:flex; flex-direction:column; gap:7px; }
+        .ctrl-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+        .ctrl-sep { width:1px; background:rgba(255,255,255,.06); align-self:stretch; margin:0 1px; }
+        .ctrl-label {
+            color: #505050; font-size: 9px;
+            font-family: 'Segoe UI', sans-serif;
+            text-transform: uppercase; letter-spacing: 2px;
+        }
+        input[type="text"], select {
+            background: rgba(0,0,0,.85); border: 1px solid #222;
+            color: #eee; padding: 7px 10px; border-radius: 5px;
+            outline: none; font-family: 'Segoe UI', sans-serif; font-size: 12px;
+            transition: border-color .2s;
+        }
+        input[type="text"]:focus, select:focus { border-color: var(--neon-color); }
+        input[type="range"] { accent-color: var(--neon-color); cursor:pointer; width:90px; }
+        input[type="color"] {
+            width:32px; height:28px; border:1px solid #222;
+            border-radius:4px; background:none; cursor:pointer; padding:2px;
+        }
+        .sw-label {
+            display:flex; align-items:center; gap:5px; cursor:pointer;
+            color:#666; font-family:'Segoe UI',sans-serif; font-size:10px;
+            letter-spacing:1.2px; text-transform:uppercase;
+            transition: color .2s;
+        }
+        .sw-label:hover { color:#bbb; }
+        input[type="checkbox"] { accent-color:var(--neon-color); width:13px; height:13px; cursor:pointer; }
+        input[type="radio"]    { accent-color:var(--neon-color); cursor:pointer; }
+        .slider-grid {
+            display:grid; grid-template-columns: 72px 1fr;
+            gap: 5px 8px; align-items:center;
+        }
+        .slider-grid .ctrl-label { text-align:right; }
+        .cdots { display:flex; gap:5px; flex-wrap:wrap; }
+        .cdot {
+            width:18px; height:18px; border-radius:50%; cursor:pointer;
+            border:2px solid transparent; flex-shrink:0;
+            transition: transform .2s, border-color .2s;
+        }
+        .cdot:hover  { transform:scale(1.3); }
+        .cdot.active { border-color:#fff; transform:scale(1.15); }
+        .pill {
+            background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1);
+            color:rgba(255,255,255,.55); font-family:'Segoe UI',sans-serif;
+            font-size:9px; letter-spacing:1.2px; padding:4px 8px;
+            cursor:pointer; border-radius:3px; transition:all .2s;
+            text-transform:uppercase; white-space:nowrap; user-select:none;
+        }
+        .pill:hover, .pill.active {
+            background:rgba(255,255,255,.1); border-color:var(--neon-color);
+            color:#fff; box-shadow:0 0 8px var(--neon-color);
+        }
+        .flicker-effect { animation: flicker 3s infinite step-end; }
+        @keyframes flicker {
+            0%,18%,22%,25%,53%,57%,100% { opacity:1; filter:brightness(1); }
+            20%,24%,55% { opacity:.25; filter:brightness(.15); }
+        }
+        .pulse-effect { animation: pulse-neon 2s infinite alternate ease-in-out; }
+        @keyframes pulse-neon {
+            from { opacity:.55; filter:brightness(.75); transform:scale(.98); }
+            to   { opacity:1;   filter:brightness(1.25); transform:scale(1.02); }
+        }
+        .glitch-effect { animation: glitch 2.8s infinite; }
+        @keyframes glitch {
+            0%,89%,100% { transform:translate(0); filter:none; }
+            90%  { transform:translate(-5px, 2px); filter:hue-rotate(80deg) brightness(1.3); }
+            92%  { transform:translate(5px,-2px); filter:hue-rotate(-80deg); }
+            94%  { transform:translate(-3px,-1px) skewX(-6deg); }
+            96%  { transform:translate(3px, 1px) skewX(6deg); filter:brightness(.6); }
+            98%  { transform:translate(0) skewX(0); }
+        }
+        .wave-effect { animation: wave-neon 2.5s ease-in-out infinite; }
+        @keyframes wave-neon {
+            0%,100% { transform:translateY(0) scaleY(1); }
+            25%     { transform:translateY(-10px) scaleY(1.04); }
+            75%     { transform:translateY(10px) scaleY(.96); }
+        }
+        .rgb-mode { animation: rgb-cycle 5s linear infinite; }
+        @keyframes rgb-cycle {
+            from { filter:hue-rotate(0deg); }
+            to   { filter:hue-rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+<div class="vignette"></div>
+<div class="cyber-grid" id="cyber-grid"></div>
+<canvas id="particle-canvas"></canvas>
+
+<svg class="corner tl" viewBox="0 0 55 55" fill="none"><polyline points="55,2 2,2 2,55" stroke="var(--neon-color)" stroke-width="1.2"/><polyline points="20,2 2,2 2,20" stroke="var(--neon-color)" stroke-width="3"/></svg>
+<svg class="corner tr" viewBox="0 0 55 55" fill="none"><polyline points="55,2 2,2 2,55" stroke="var(--neon-color)" stroke-width="1.2"/><polyline points="20,2 2,2 2,20" stroke="var(--neon-color)" stroke-width="3"/></svg>
+<svg class="corner bl" viewBox="0 0 55 55" fill="none"><polyline points="55,2 2,2 2,55" stroke="var(--neon-color)" stroke-width="1.2"/><polyline points="20,2 2,2 2,20" stroke="var(--neon-color)" stroke-width="3"/></svg>
+<svg class="corner br" viewBox="0 0 55 55" fill="none"><polyline points="55,2 2,2 2,55" stroke="var(--neon-color)" stroke-width="1.2"/><polyline points="20,2 2,2 2,20" stroke="var(--neon-color)" stroke-width="3"/></svg>
+
+<div id="toast"></div>
+
+<div id="kb-hints">
+    ESPACIO · Play/Pausa<br>
+    ESC · Detener<br>
+    F · Pantalla completa<br>
+    C · Copiar texto<br>
+    T · Reloj &nbsp;·&nbsp; P · Partículas<br>
+    R · RGB &nbsp;·&nbsp; ↑↓ · Tamaño
+</div>
+
+<div class="animation-actions">
+    <div class="custom-btn" id="btn-snd" data-tip="SONIDO NEÓN">
+        <span class="icon-snd" id="snd-icon">🔇</span>
+    </div>
+    <div class="custom-btn" id="btn-fs" data-tip="PANTALLA COMPLETA">
+        <div class="icon-fs"></div>
+    </div>
+    <div class="custom-btn" id="btn-toggle" data-tip="PLAY / PAUSA">
+        <div class="icon-play"></div>
+        <div class="icon-pause"><span></span><span></span></div>
+    </div>
+    <div class="custom-btn" id="btn-stop" data-tip="DETENER">
+        <div class="icon-stop"></div>
+    </div>
+</div>
+
+<div class="scene" id="scene3d">
+    <div id="clock-display"></div>
+    <div class="marquee-wrapper" id="marquee-wrap">
+        <div class="scroll-content" id="scroll-content">
+            <span id="display-text" class="neon-text"></span><span class="sep-span" id="sep-el"></span>
+        </div>
+    </div>
+    <div class="subtitle-wrap">
+        <span id="subtitle-display"></span>
+    </div>
+</div>
+
+<div class="hover-zone">[ PASA EL RATÓN AQUÍ PARA ABRIR EL MENÚ ]</div>
+
+<div class="controls">
+    <div class="ctrl-col">
+        <span class="ctrl-label">Mensaje</span>
+        <input type="text" id="text-input" placeholder="Escribe aquí…" style="width:185px">
+        <input type="text" id="sub-input"  placeholder="Subtítulo (opcional)" style="width:185px;opacity:.6">
+    </div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-col">
+        <span class="ctrl-label">Color & Fuente</span>
+        <div class="ctrl-row">
+            <input type="color" id="color-picker" value="#ff00ea">
+            <select id="font-sel">
+                <option value="'Righteous',sans-serif">Cyberpunk</option>
+                <option value="'Pacifico',cursive">Retro Bar</option>
+                <option value="'Monoton',cursive">Líneas</option>
+                <option value="'Press Start 2P',cursive">8-Bit</option>
+                <option value="'Orbitron',sans-serif">Orbitron</option>
+                <option value="system-ui">Emojis</option>
+            </select>
+        </div>
+        <div class="cdots" id="cdots">
+            <div class="cdot active" data-c="#ff00ea" style="background:#ff00ea;box-shadow:0 0 7px #ff00ea"></div>
+            <div class="cdot" data-c="#00f0ff" style="background:#00f0ff;box-shadow:0 0 7px #00f0ff"></div>
+            <div class="cdot" data-c="#39ff14" style="background:#39ff14;box-shadow:0 0 7px #39ff14"></div>
+            <div class="cdot" data-c="#ff3131" style="background:#ff3131;box-shadow:0 0 7px #ff3131"></div>
+            <div class="cdot" data-c="#ff6b00" style="background:#ff6b00;box-shadow:0 0 7px #ff6b00"></div>
+            <div class="cdot" data-c="#ffe600" style="background:#ffe600;box-shadow:0 0 7px #ffe600"></div>
+            <div class="cdot" data-c="#a855f7" style="background:#a855f7;box-shadow:0 0 7px #a855f7"></div>
+            <div class="cdot" data-c="#ffffff" style="background:#fff;box-shadow:0 0 7px #fff"></div>
+        </div>
+    </div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-col">
+        <span class="ctrl-label">Ajustes</span>
+        <div class="slider-grid">
+            <span class="ctrl-label">Tamaño</span>    <input type="range" id="size-slider"    min="4"   max="30"  value="15">
+            <span class="ctrl-label">Brillo</span>    <input type="range" id="glow-slider"    min="0.2" max="3"   step="0.1" value="1">
+            <span class="ctrl-label">Velocidad</span> <input type="range" id="speed-slider"   min="3"   max="30"  value="12" dir="rtl">
+            <span class="ctrl-label">Espaciado</span> <input type="range" id="spacing-slider" min="0"   max="0.5" step="0.01" value="0.05">
+        </div>
+        <div class="ctrl-row" style="margin-top:2px">
+            <div class="pill spd-pre" data-s="24">LENTO</div>
+            <div class="pill spd-pre" data-s="12">MEDIO</div>
+            <div class="pill spd-pre" data-s="4">RÁPIDO</div>
+        </div>
+    </div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-col">
+        <span class="ctrl-label">Separador</span>
+        <input type="text" id="sep-input" placeholder="✦" style="width:70px;text-align:center">
+        <div class="ctrl-row">
+            <div class="pill sep-pre" data-sep="✦">✦</div>
+            <div class="pill sep-pre" data-sep="◈">◈</div>
+            <div class="pill sep-pre" data-sep="★">★</div>
+            <div class="pill sep-pre" data-sep="///">//</div>
+            <div class="pill sep-pre" data-sep="···">···</div>
+            <div class="pill sep-pre" data-sep="">OFF</div>
+        </div>
+        <span class="ctrl-label" style="margin-top:4px">Fondo</span>
+        <div class="ctrl-row">
+            <input type="color" id="bg-picker" value="#030303">
+            <label class="sw-label"><input type="checkbox" id="grid-tog" checked> Grid</label>
+        </div>
+    </div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-col">
+        <span class="ctrl-label">Mensajes Rápidos</span>
+        <div class="ctrl-row" style="max-width:205px;flex-wrap:wrap">
+            <div class="pill msg-pre" data-m="BIENVENIDOS">WELCOME</div>
+            <div class="pill msg-pre" data-m="ABIERTO 24H">OPEN 24H</div>
+            <div class="pill msg-pre" data-m="TONIGHT ONLY">TONIGHT</div>
+            <div class="pill msg-pre" data-m="NO SIGNAL">NO SIGNAL</div>
+            <div class="pill msg-pre" data-m="GAME OVER">GAME OVER</div>
+            <div class="pill msg-pre" data-m="INSERT COIN ▶">INSERT COIN</div>
+            <div class="pill msg-pre" data-m="◤ PLAYER 1 ◢">PLAYER 1</div>
+            <div class="pill msg-pre" data-m="LOADING...">LOADING</div>
+            <div class="pill msg-pre" data-m="◈ VIP ONLY ◈">VIP ONLY</div>
+            <div class="pill msg-pre" data-m="LIVE NOW ●">LIVE NOW</div>
+        </div>
+    </div>
+    <div class="ctrl-sep"></div>
+    <div class="ctrl-col">
+        <span class="ctrl-label">Modos & Efectos</span>
+        <div class="ctrl-row">
+            <label class="sw-label"><input type="checkbox" id="tog-3d"> 3D</label>
+            <label class="sw-label"><input type="checkbox" id="tog-dir"> Invertir</label>
+            <label class="sw-label"><input type="checkbox" id="tog-rgb"> RGB</label>
+            <label class="sw-label"><input type="checkbox" id="tog-par"> Partículas</label>
+            <label class="sw-label"><input type="checkbox" id="tog-clk"> Reloj</label>
+        </div>
+        <div class="ctrl-row" style="margin-top:2px">
+            <label class="sw-label"><input type="radio" name="fx" value="none" checked> Off</label>
+            <label class="sw-label"><input type="radio" name="fx" value="flicker"> Parpadeo</label>
+            <label class="sw-label"><input type="radio" name="fx" value="pulse"> Pulso</label>
+            <label class="sw-label"><input type="radio" name="fx" value="glitch"> Glitch</label>
+            <label class="sw-label"><input type="radio" name="fx" value="wave"> Wave</label>
+        </div>
+    </div>
+</div>
+
+<script>
+(() => {
+    const R   = document.documentElement;
+    const $   = id => document.getElementById(id);
+    const txt = $('display-text');
+    const sc  = $('scroll-content');
+    const s3  = $('scene3d');
+    const sep = $('sep-el');
+    const sub = $('subtitle-display');
+    const clk = $('clock-display');
+    const mw  = $('marquee-wrap');
+    const BTN = { toggle:$('btn-toggle'), stop:$('btn-stop'), fs:$('btn-fs'), snd:$('btn-snd') };
+    const INP = {
+        text:    $('text-input'),
+        subI:    $('sub-input'),
+        sepI:    $('sep-input'),
+        color:   $('color-picker'),
+        bg:      $('bg-picker'),
+        font:    $('font-sel'),
+        size:    $('size-slider'),
+        glow:    $('glow-slider'),
+        speed:   $('speed-slider'),
+        spacing: $('spacing-slider'),
+        dir:     $('tog-dir'),
+        rgb:     $('tog-rgb'),
+        d3:      $('tog-3d'),
+        par:     $('tog-par'),
+        clkTog:  $('tog-clk'),
+        grid:    $('grid-tog'),
+        fxR:     document.querySelectorAll('input[name="fx"]'),
+    };
+
+    let _toast;
+    const showToast = msg => {
+        const el = $('toast');
+        el.textContent = msg; el.classList.add('show');
+        clearTimeout(_toast);
+        _toast = setTimeout(() => el.classList.remove('show'), 2200);
+    };
+
+    let pColor = {r:255, g:0, b:234};
+    const hexToRgb = hex => ({
+        r: parseInt(hex.slice(1,3),16),
+        g: parseInt(hex.slice(3,5),16),
+        b: parseInt(hex.slice(5,7),16)
+    });
+    const applyColor = hex => {
+        R.style.setProperty('--neon-color', hex);
+        INP.color.value = hex;
+        document.querySelectorAll('.cdot').forEach(d =>
+            d.classList.toggle('active', d.dataset.c === hex));
+        pColor = hexToRgb(hex);
+    };
+    INP.color.addEventListener('input', e => applyColor(e.target.value));
+    document.querySelectorAll('.cdot').forEach(d =>
+        d.addEventListener('click', () => applyColor(d.dataset.c)));
+
+    INP.text.addEventListener('input', e => txt.textContent = e.target.value);
+    INP.subI.addEventListener('input', e => sub.textContent = e.target.value);
+    INP.sepI.addEventListener('input', e => sep.textContent = e.target.value);
+
+    INP.bg.addEventListener('input', e => R.style.setProperty('--bg-color', e.target.value));
+    INP.grid.addEventListener('change', e =>
+        $('cyber-grid').style.display = e.target.checked ? '' : 'none');
+
+    INP.font.addEventListener('change',    e => R.style.setProperty('--font-family',    e.target.value));
+    INP.size.addEventListener('input',     e => R.style.setProperty('--font-size',      e.target.value + 'vw'));
+    INP.glow.addEventListener('input',     e => R.style.setProperty('--glow-spread',    e.target.value));
+    INP.speed.addEventListener('input',    e => R.style.setProperty('--speed',          e.target.value + 's'));
+    INP.spacing.addEventListener('input',  e => R.style.setProperty('--letter-spacing', e.target.value + 'em'));
+    INP.dir.addEventListener('change',     e => R.style.setProperty('--direction',      e.target.checked ? 'reverse' : 'normal'));
+
+    document.querySelectorAll('.spd-pre').forEach(p =>
+        p.addEventListener('click', () => {
+            document.querySelectorAll('.spd-pre').forEach(x => x.classList.remove('active'));
+            p.classList.add('active');
+            INP.speed.value = p.dataset.s;
+            R.style.setProperty('--speed', p.dataset.s + 's');
+        }));
+
+    document.querySelectorAll('.sep-pre').forEach(p =>
+        p.addEventListener('click', () => {
+            INP.sepI.value = p.dataset.sep;
+            sep.textContent = p.dataset.sep;
+        }));
+
+    document.querySelectorAll('.msg-pre').forEach(p =>
+        p.addEventListener('click', () => {
+            INP.text.value = p.dataset.m;
+            txt.textContent = p.dataset.m;
+        }));
+
+    const fxMap = { flicker:'flicker-effect', pulse:'pulse-effect', glitch:'glitch-effect', wave:'wave-effect' };
+    const fxClasses = Object.values(fxMap);
+    INP.fxR.forEach(r => r.addEventListener('change', e => {
+        txt.classList.remove(...fxClasses);
+        if (fxMap[e.target.value]) txt.classList.add(fxMap[e.target.value]);
+    }));
+    INP.rgb.addEventListener('change', e => txt.classList.toggle('rgb-mode', e.target.checked));
+
+    document.addEventListener('mousemove', e => {
+        if (!INP.d3.checked) { s3.style.transform = ''; return; }
+        const rx = (window.innerWidth  / 2 - e.pageX) / 50;
+        const ry = (window.innerHeight / 2 - e.pageY) / 50;
+        s3.style.transform = `rotateY(${rx}deg) rotateX(${ry}deg)`;
+    });
+
+    BTN.toggle.addEventListener('click', () => {
+        const paused = getComputedStyle(sc).animationPlayState === 'paused';
+        sc.style.animationPlayState = paused ? 'running' : 'paused';
+        BTN.toggle.classList.toggle('is-playing', paused);
+    });
+
+    BTN.stop.addEventListener('click', () => {
+        sc.style.animation = 'none';
+        void sc.offsetWidth;
+        sc.style.animation = null;
+        sc.style.animationPlayState = 'paused';
+        BTN.toggle.classList.remove('is-playing');
+        txt.textContent = ''; sub.textContent = '';
+        INP.text.value  = ''; INP.subI.value  = '';
+    });
+
+    BTN.fs.addEventListener('click', () => {
+        if (!document.fullscreenElement)
+            document.documentElement.requestFullscreen().catch(() => {});
+        else document.exitFullscreen();
+    });
+
+    let clockTick = null;
+    const tickClock = () => {
+        const n  = new Date();
+        clk.textContent =
+            String(n.getHours()).padStart(2,'0') + ':' +
+            String(n.getMinutes()).padStart(2,'0') + ':' +
+            String(n.getSeconds()).padStart(2,'0');
+    };
+    INP.clkTog.addEventListener('change', e => {
+        if (e.target.checked) {
+            clk.style.display = 'block'; mw.style.display = 'none';
+            tickClock(); clockTick = setInterval(tickClock, 1000);
+            showToast('MODO RELOJ ACTIVADO');
+        } else {
+            clk.style.display = 'none'; mw.style.display = '';
+            clearInterval(clockTick);
+        }
+    });
+
+    const canvas = $('particle-canvas');
+    const ctx    = canvas.getContext('2d');
+    let particles = [], pRunning = false, pRAF;
+    const resizeCanvas = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    const spawnP = () => ({
+        x: Math.random() * canvas.width,
+        y: canvas.height + 10,
+        vx: (Math.random() - .5) * .7,
+        vy: -(Math.random() * 1.3 + .4),
+        r:  Math.random() * 2.2 + .5,
+        a: 1, da: Math.random() * .005 + .003,
+    });
+    const animP = () => {
+        if (!pRunning) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (Math.random() < .35) particles.push(spawnP());
+        particles = particles.filter(p => p.a > 0);
+        for (const p of particles) {
+            p.x += p.vx; p.y += p.vy; p.a -= p.da;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fillStyle   = `rgba(${pColor.r},${pColor.g},${pColor.b},${p.a})`;
+            ctx.shadowBlur  = 9;
+            ctx.shadowColor = `rgba(${pColor.r},${pColor.g},${pColor.b},.55)`;
+            ctx.fill();
+        }
+        pRAF = requestAnimationFrame(animP);
+    };
+    INP.par.addEventListener('change', e => {
+        if (e.target.checked) {
+            pRunning = true; canvas.classList.add('on'); animP();
+            showToast('PARTÍCULAS ACTIVADAS');
+        } else {
+            pRunning = false; cancelAnimationFrame(pRAF);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            canvas.classList.remove('on');
+        }
+    });
+
+    let audioCtx = null, buzzing = false;
+    let gainNode, osc1, osc2, flickOsc, flickGain;
+    const startBuzz = () => {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        gainNode = audioCtx.createGain();
+        gainNode.gain.setValueAtTime(.042, audioCtx.currentTime);
+        osc1 = audioCtx.createOscillator(); osc1.type = 'sawtooth'; osc1.frequency.value = 118;
+        osc2 = audioCtx.createOscillator(); osc2.type = 'sine';     osc2.frequency.value = 59;
+        flickOsc  = audioCtx.createOscillator(); flickOsc.type = 'square'; flickOsc.frequency.value = 2.8;
+        flickGain = audioCtx.createGain(); flickGain.gain.value = .016;
+        flickOsc.connect(flickGain); flickGain.connect(gainNode);
+        osc1.connect(gainNode); osc2.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        osc1.start(); osc2.start(); flickOsc.start();
+        buzzing = true; $('snd-icon').textContent = '🔊';
+        showToast('SONIDO NEÓN ENCENDIDO');
+    };
+    const stopBuzz = () => {
+        [osc1, osc2, flickOsc].forEach(o => { try { o.stop(); } catch(e){} });
+        try { gainNode.disconnect(); } catch(e){}
+        buzzing = false; $('snd-icon').textContent = '🔇';
+        showToast('SONIDO APAGADO');
+    };
+    BTN.snd.addEventListener('click', () => buzzing ? stopBuzz() : startBuzz());
+
+    document.addEventListener('keydown', e => {
+        const tag = document.activeElement.tagName;
+        if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+        switch (e.key.toLowerCase()) {
+            case ' ':
+                e.preventDefault(); BTN.toggle.click();
+                showToast(getComputedStyle(sc).animationPlayState === 'running'
+                    ? '▶  REPRODUCIENDO' : '⏸  PAUSADO'); break;
+            case 'escape':
+                BTN.stop.click(); showToast('⏹  DETENIDO'); break;
+            case 'f':
+                BTN.fs.click(); break;
+            case 'c':
+                if (INP.text.value) {
+                    navigator.clipboard.writeText(INP.text.value).catch(() => {});
+                    showToast('TEXTO COPIADO ✓');
+                } break;
+            case 't':
+                INP.clkTog.checked = !INP.clkTog.checked;
+                INP.clkTog.dispatchEvent(new Event('change')); break;
+            case 'p':
+                INP.par.checked = !INP.par.checked;
+                INP.par.dispatchEvent(new Event('change')); break;
+            case 'r':
+                INP.rgb.checked = !INP.rgb.checked;
+                INP.rgb.dispatchEvent(new Event('change'));
+                showToast(INP.rgb.checked ? 'RGB ACTIVADO' : 'RGB DESACTIVADO'); break;
+            case 'arrowup':
+                e.preventDefault();
+                INP.size.value = Math.min(+INP.size.value + 1, 30);
+                R.style.setProperty('--font-size', INP.size.value + 'vw'); break;
+            case 'arrowdown':
+                e.preventDefault();
+                INP.size.value = Math.max(+INP.size.value - 1, 4);
+                R.style.setProperty('--font-size', INP.size.value + 'vw'); break;
+        }
+    });
+})();
+</script>
+</body>
+</html>
